@@ -37,6 +37,7 @@ import (
 
 const (
 	lfsAuthenticateVerb = "git-lfs-authenticate"
+	lfsTransferVerb     = "git-lfs-transfer"
 )
 
 // CmdServ represents the available serv sub-command.
@@ -78,6 +79,7 @@ var (
 		"git-upload-archive": perm.AccessModeRead,
 		"git-receive-pack":   perm.AccessModeWrite,
 		lfsAuthenticateVerb:  perm.AccessModeNone,
+		lfsTransferVerb:      perm.AccessModeNone,
 	}
 	alphaDashDotPattern = regexp.MustCompile(`[^\w-\.]`)
 )
@@ -195,7 +197,7 @@ func runServ(c *cli.Context) error {
 	}
 
 	var lfsVerb string
-	if verb == lfsAuthenticateVerb {
+	if verb == lfsAuthenticateVerb || verb == lfsTransferVerb {
 		if !setting.LFS.StartServer {
 			return fail(ctx, "Unknown git command", "LFS authentication request over SSH denied, LFS support is disabled")
 		}
@@ -245,7 +247,7 @@ func runServ(c *cli.Context) error {
 		return fail(ctx, "Unknown git command", "Unknown git command %s", verb)
 	}
 
-	if verb == lfsAuthenticateVerb {
+	if verb == lfsAuthenticateVerb || verb == lfsTransferVerb {
 		if lfsVerb == "upload" {
 			requestedMode = perm.AccessModeWrite
 		} else if lfsVerb == "download" {
@@ -311,6 +313,9 @@ func runServ(c *cli.Context) error {
 	if gitcmd == nil {
 		// by default, use the verb (it has been checked above by allowedCommands)
 		gitcmd = exec.CommandContext(ctx, gitBinVerb, repoPath)
+	}
+	if verb == lfsTransferVerb {
+		gitcmd.Args = append(gitcmd.Args, lfsVerb)
 	}
 
 	process.SetSysProcAttribute(gitcmd)
