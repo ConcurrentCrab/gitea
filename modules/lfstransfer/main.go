@@ -6,6 +6,7 @@ package lfstransfer
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
 
@@ -17,7 +18,11 @@ func Main(ctx context.Context, repo string, verb string, token string) error {
 	f, _ := os.OpenFile("/tmp/lfs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer f.Close()
 	logger := newLogger(fmt.Sprintf("PID [%05d]", os.Getpid()), f)
-	pktline := transfer.NewPktline(os.Stdin, os.Stdout, logger)
+	t, _ := os.OpenFile(fmt.Sprintf("/tmp/lfs/%v.log", os.Getpid()), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer t.Close()
+	in := io.TeeReader(os.Stdin, t)
+	out := io.MultiWriter(os.Stdout, t)
+	pktline := transfer.NewPktline(in, out, logger)
 	giteaBackend, err := backend.New(ctx, repo, verb, token, logger)
 	if err != nil {
 		return err
