@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"code.gitea.io/gitea/modules/lfstransfer/backend"
 	"github.com/charmbracelet/git-lfs-transfer/transfer"
@@ -19,6 +20,14 @@ func Main(ctx context.Context, repo string, verb string, token string) error {
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Log("got panic", err)
+			logger.Log(string(debug.Stack()))
+			panic(err)
+		}
+	}()
 
 	for _, cap := range backend.Capabilities {
 		if err := pktline.WritePacketText(cap); err != nil {
