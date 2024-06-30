@@ -7,50 +7,15 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
-	db_model "code.gitea.io/gitea/models/db"
-	repo_model "code.gitea.io/gitea/models/repo"
-	"code.gitea.io/gitea/modules/lfs"
 	"code.gitea.io/gitea/modules/lfstransfer/backend"
 	"code.gitea.io/gitea/modules/lfstransfer/transfer"
-	"code.gitea.io/gitea/modules/log"
-	"code.gitea.io/gitea/modules/setting"
-	"code.gitea.io/gitea/modules/storage"
 )
 
-func initServices(ctx context.Context) error {
-	setting.MustInstalled()
-	setting.LoadDBSetting()
-	setting.InitSQLLoggersForCli(log.INFO)
-	if err := db_model.InitEngine(ctx); err != nil {
-		return fmt.Errorf("unable to initialize the database using configuration [%q]: %w", setting.CustomConf, err)
-	}
-	if err := storage.Init(); err != nil {
-		return fmt.Errorf("unable to initialise storage: %v", err)
-	}
-	return nil
-}
-
-func getRepo(ctx context.Context, path string) (*repo_model.Repository, error) {
-	// runServ ensures repoPath is [owner]/[name].git
-	pathSeg := strings.Split(path, "/")
-	pathSeg[1] = strings.TrimSuffix(pathSeg[1], ".git")
-	return repo_model.GetRepositoryByOwnerAndName(ctx, pathSeg[0], pathSeg[1])
-}
-
-func Main(ctx context.Context, repoPath string, verb string) error {
-	if err := initServices(ctx); err != nil {
-		return err
-	}
-
+func Main(ctx context.Context, token string, repo string, verb string) error {
 	logger := newLogger()
 	pktline := transfer.NewPktline(os.Stdin, os.Stdout, logger)
-	repo, err := getRepo(ctx, repoPath)
-	if err != nil {
-		return fmt.Errorf("unable to get repository: %s Error: %v", repoPath, err)
-	}
-	giteaBackend := backend.New(ctx, repo, lfs.NewContentStore())
+	giteaBackend := backend.New(ctx, token, repo, verb)
 
 	for _, cap := range backend.Capabilities {
 		if err := pktline.WritePacketText(cap); err != nil {

@@ -303,7 +303,11 @@ func runServ(c *cli.Context) error {
 
 	// LFS SSH protocol
 	if verb == verbLfsTransfer {
-		return lfstransfer.Main(ctx, repoPath, lfsVerb)
+		token, err := getLFSAuthToken(ctx, lfsVerb, results)
+		if err != nil {
+			return err
+		}
+		return lfstransfer.Main(ctx, token, repoPath, lfsVerb)
 	}
 
 	// LFS token authentication
