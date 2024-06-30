@@ -14,7 +14,9 @@ import (
 )
 
 func Main(ctx context.Context, repo string, verb string, token string) error {
-	logger := newLogger()
+	f, _ := os.OpenFile("/tmp/lfs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer f.Close()
+	logger := newLogger(fmt.Sprintf("PID [%05d]", os.Getpid()), f)
 	pktline := transfer.NewPktline(os.Stdin, os.Stdout, logger)
 	giteaBackend, err := backend.New(ctx, repo, verb, token, logger)
 	if err != nil {
